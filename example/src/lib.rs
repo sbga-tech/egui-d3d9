@@ -7,7 +7,7 @@ use egui::{
     ImageSource, Key, Modifiers, Pos2, Rect, RichText, ScrollArea, Slider, Stroke, StrokeKind,
     TextureId, Vec2, Widget,
 };
-use egui_d3d9::EguiDx9;
+use egui_d3d9::{App, EguiDx9};
 use std::{
     intrinsics::transmute,
     sync::{Arc, Once},
@@ -41,7 +41,7 @@ extern "stdcall" fn DllMain(hinst: usize, reason: u32, _reserved: *mut ()) -> i3
     1
 }
 
-static mut APP: Option<EguiDx9<i32>> = None;
+static mut APP: Option<EguiDx9<Example>> = None;
 static mut OLD_WND_PROC: Option<WNDPROC> = None;
 
 static_detour! {
@@ -77,7 +77,7 @@ fn hk_present(
             let window = FindWindowA(s!("Valve001"), PCSTR(std::ptr::null()))
                 .expect("unable to find valve window");
 
-            APP = Some(EguiDx9::init(&dev, window, ui, 0, true));
+            APP = Some(EguiDx9::init(&dev, window, Example(0), true));
 
             OLD_WND_PROC = Some(transmute(SetWindowLongPtrA(
                 window,
@@ -114,155 +114,158 @@ unsafe extern "stdcall" fn hk_wnd_proc(
     CallWindowProcW(OLD_WND_PROC.unwrap(), hwnd, msg, wparam, lparam)
 }
 
-// most of this code is ported over from sy1ntexx's d3d11 implementation.
-static mut FRAME: i32 = 0;
-fn ui(ctx: &Context, i: &mut i32) {
-    unsafe {
-        // You should not use statics like this, it's made
-        // this way for the sake of example.
-        static mut UI_CHECK: bool = true;
-        static mut TEXT: Option<String> = None;
-        static mut VALUE: f32 = 0.;
-        static mut COLOR: [f32; 3] = [0., 0., 0.];
-        static ONCE: Once = Once::new();
+struct Example(i32);
 
-        ONCE.call_once(|| {
-            // Uncomment this to set other fonts.
-            // let mut fonts = FontDefinitions::default();
-            // let mut tweak = FontTweak::default();
-            // fonts.font_data.insert(
-            //     "my_font".to_owned(),
-            //     FontData::from_static(include_bytes!("Lobster-Regular.ttf")).tweak(tweak),
-            // );
-            // fonts
-            //     .families
-            //     .get_mut(&FontFamily::Proportional)
-            //     .unwrap()
-            //     .insert(0, "my_font".to_owned());
-            // fonts
-            //     .families
-            //     .get_mut(&FontFamily::Monospace)
-            //     .unwrap()
-            //     .push("my_font".to_owned());
-            // ctx.set_fonts(fonts);
-            egui_extras::install_image_loaders(ctx);
-        });
+impl App for Example {
+    // most of this code is ported over from sy1ntexx's d3d11 implementation.
+    fn update(&mut self, ctx: &Context) {
+        unsafe {
+            // You should not use statics like this, it's made
+            // this way for the sake of example.
+            static mut UI_CHECK: bool = true;
+            static mut TEXT: Option<String> = None;
+            static mut VALUE: f32 = 0.;
+            static mut COLOR: [f32; 3] = [0., 0., 0.];
+            static ONCE: Once = Once::new();
 
-        if TEXT.is_none() {
-            TEXT = Some(String::from("Test"));
+            ONCE.call_once(|| {
+                // Uncomment this to set other fonts.
+                // let mut fonts = FontDefinitions::default();
+                // let mut tweak = FontTweak::default();
+                // fonts.font_data.insert(
+                //     "my_font".to_owned(),
+                //     FontData::from_static(include_bytes!("Lobster-Regular.ttf")).tweak(tweak),
+                // );
+                // fonts
+                //     .families
+                //     .get_mut(&FontFamily::Proportional)
+                //     .unwrap()
+                //     .insert(0, "my_font".to_owned());
+                // fonts
+                //     .families
+                //     .get_mut(&FontFamily::Monospace)
+                //     .unwrap()
+                //     .push("my_font".to_owned());
+                // ctx.set_fonts(fonts);
+                egui_extras::install_image_loaders(ctx);
+            });
+
+            if TEXT.is_none() {
+                TEXT = Some(String::from("Test"));
+            }
+
+            ctx.debug_painter().text(
+                Pos2::new(0., 0.),
+                Align2::LEFT_TOP,
+                "Bruh",
+                FontId::default(),
+                Color32::RED,
+            );
+
+            egui::containers::Window::new("Main menu").show(ctx, |ui| {
+                ctx.settings_ui(ui);
+                ui.label(RichText::new("Test").color(Color32::BLACK));
+                ui.label(RichText::new("Other").color(Color32::WHITE));
+                ui.separator();
+
+                ui.label(RichText::new(format!("I: {}", self.0)).color(Color32::LIGHT_RED));
+
+                let input = ctx.input(|input| input.pointer.clone());
+                ui.label(format!(
+                    "X1: {} X2: {}",
+                    input.button_down(egui::PointerButton::Extra1),
+                    input.button_down(egui::PointerButton::Extra2)
+                ));
+
+                let mods = ui.input(|input| input.modifiers);
+                ui.label(format!(
+                    "Ctrl: {} Shift: {} Alt: {}",
+                    mods.ctrl, mods.shift, mods.alt
+                ));
+
+                if ui.input(|input| {
+                    input.modifiers.matches(Modifiers::CTRL) && input.key_pressed(Key::R)
+                }) {
+                    println!("Pressed");
+                }
+
+                unsafe {
+                    ui.checkbox(&mut UI_CHECK, "Some checkbox");
+                    ui.text_edit_singleline(TEXT.as_mut().unwrap());
+                    ScrollArea::vertical().max_height(200.).show(ui, |ui| {
+                        for i in 1..=100 {
+                            ui.label(format!("Label: {}", i));
+                        }
+                    });
+
+                    Slider::new(&mut VALUE, -1.0..=1.0).ui(ui);
+
+                    ui.color_edit_button_rgb(&mut COLOR);
+                }
+
+                ui.label(format!(
+                    "{:?}",
+                    &ui.input(|input| input.pointer.button_down(egui::PointerButton::Primary))
+                ));
+                if ui.button("You can't click me yet").clicked() {
+                    self.0 += 1;
+                }
+            });
+
+            egui::Window::new("Image").show(ctx, |ui| unsafe {
+                const IMG: ImageSource = egui::include_image!("logo.bmp");
+
+                ui.image(IMG);
+            });
+
+            egui::Window::new("xd").show(ctx, |ui| unsafe {
+                ctx.memory_ui(ui);
+            });
+
+            egui::Window::new("stuff").show(ctx, |ui| unsafe {
+                ctx.inspection_ui(ui);
+            });
+
+            ctx.debug_painter().rect(
+                Rect {
+                    min: Pos2::new(200.0, 200.0),
+                    max: Pos2::new(250.0, 250.0),
+                },
+                10.0,
+                Color32::from_rgba_premultiplied(255, 0, 0, 150),
+                Stroke::NONE,
+                StrokeKind::Inside,
+            );
+
+            // this is supposed to be color channel testing to identify if any channels have been misplaced
+            ctx.debug_painter().circle(
+                Pos2::new(350.0, 350.0),
+                35.0,
+                Color32::from_rgba_premultiplied(255, 0, 0, 0),
+                Stroke::NONE,
+            );
+
+            ctx.debug_painter().circle(
+                Pos2::new(450.0, 350.0),
+                35.0,
+                Color32::from_rgba_premultiplied(0, 255, 0, 0),
+                Stroke::NONE,
+            );
+
+            ctx.debug_painter().circle(
+                Pos2::new(550.0, 350.0),
+                35.0,
+                Color32::from_rgba_premultiplied(0, 0, 255, 0),
+                Stroke::NONE,
+            );
+
+            ctx.debug_painter().circle(
+                Pos2::new(650.0, 350.0),
+                35.0,
+                Color32::from_rgba_premultiplied(0, 0, 0, 255),
+                Stroke::new(5f32, Color32::from_rgba_premultiplied(0, 0, 255, 255)),
+            );
         }
-
-        ctx.debug_painter().text(
-            Pos2::new(0., 0.),
-            Align2::LEFT_TOP,
-            "Bruh",
-            FontId::default(),
-            Color32::RED,
-        );
-
-        egui::containers::Window::new("Main menu").show(ctx, |ui| {
-            ctx.settings_ui(ui);
-            ui.label(RichText::new("Test").color(Color32::BLACK));
-            ui.label(RichText::new("Other").color(Color32::WHITE));
-            ui.separator();
-
-            ui.label(RichText::new(format!("I: {}", *i)).color(Color32::LIGHT_RED));
-
-            let input = ctx.input(|input| input.pointer.clone());
-            ui.label(format!(
-                "X1: {} X2: {}",
-                input.button_down(egui::PointerButton::Extra1),
-                input.button_down(egui::PointerButton::Extra2)
-            ));
-
-            let mods = ui.input(|input| input.modifiers);
-            ui.label(format!(
-                "Ctrl: {} Shift: {} Alt: {}",
-                mods.ctrl, mods.shift, mods.alt
-            ));
-
-            if ui.input(|input| {
-                input.modifiers.matches(Modifiers::CTRL) && input.key_pressed(Key::R)
-            }) {
-                println!("Pressed");
-            }
-
-            unsafe {
-                ui.checkbox(&mut UI_CHECK, "Some checkbox");
-                ui.text_edit_singleline(TEXT.as_mut().unwrap());
-                ScrollArea::vertical().max_height(200.).show(ui, |ui| {
-                    for i in 1..=100 {
-                        ui.label(format!("Label: {}", i));
-                    }
-                });
-
-                Slider::new(&mut VALUE, -1.0..=1.0).ui(ui);
-
-                ui.color_edit_button_rgb(&mut COLOR);
-            }
-
-            ui.label(format!(
-                "{:?}",
-                &ui.input(|input| input.pointer.button_down(egui::PointerButton::Primary))
-            ));
-            if ui.button("You can't click me yet").clicked() {
-                *i += 1;
-            }
-        });
-
-        egui::Window::new("Image").show(ctx, |ui| unsafe {
-            const IMG: ImageSource = egui::include_image!("logo.bmp");
-
-            ui.image(IMG);
-        });
-
-        egui::Window::new("xd").show(ctx, |ui| unsafe {
-            ctx.memory_ui(ui);
-        });
-
-        egui::Window::new("stuff").show(ctx, |ui| unsafe {
-            ctx.inspection_ui(ui);
-        });
-
-        ctx.debug_painter().rect(
-            Rect {
-                min: Pos2::new(200.0, 200.0),
-                max: Pos2::new(250.0, 250.0),
-            },
-            10.0,
-            Color32::from_rgba_premultiplied(255, 0, 0, 150),
-            Stroke::NONE,
-            StrokeKind::Inside,
-        );
-
-        // this is supposed to be color channel testing to identify if any channels have been misplaced
-        ctx.debug_painter().circle(
-            Pos2::new(350.0, 350.0),
-            35.0,
-            Color32::from_rgba_premultiplied(255, 0, 0, 0),
-            Stroke::NONE,
-        );
-
-        ctx.debug_painter().circle(
-            Pos2::new(450.0, 350.0),
-            35.0,
-            Color32::from_rgba_premultiplied(0, 255, 0, 0),
-            Stroke::NONE,
-        );
-
-        ctx.debug_painter().circle(
-            Pos2::new(550.0, 350.0),
-            35.0,
-            Color32::from_rgba_premultiplied(0, 0, 255, 0),
-            Stroke::NONE,
-        );
-
-        ctx.debug_painter().circle(
-            Pos2::new(650.0, 350.0),
-            35.0,
-            Color32::from_rgba_premultiplied(0, 0, 0, 255),
-            Stroke::new(5f32, Color32::from_rgba_premultiplied(0, 0, 255, 255)),
-        );
     }
 }
 

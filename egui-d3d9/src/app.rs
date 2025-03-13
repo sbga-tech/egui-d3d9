@@ -13,9 +13,12 @@ use crate::{
     texman::TextureManager,
 };
 
+pub trait App {
+    fn update(&mut self, ctx: &Context);
+}
+
 pub struct EguiDx9<T> {
-    ui_fn: Box<dyn FnMut(&Context, &mut T) + 'static>,
-    ui_state: T,
+    app: T,
     hwnd: HWND,
     reactive: bool,
     input_man: InputManager,
@@ -39,20 +42,13 @@ impl<T> EguiDx9<T> {
     ///
     /// the menu doesn't always catch these changes, so only use this if you need to.
     ///
-    pub fn init(
-        dev: &IDirect3DDevice9,
-        hwnd: HWND,
-        ui_fn: impl FnMut(&Context, &mut T) + 'static,
-        ui_state: T,
-        reactive: bool,
-    ) -> Self {
+    pub fn init(dev: &IDirect3DDevice9, hwnd: HWND, app: T, reactive: bool) -> Self {
         if hwnd.is_invalid() {
             panic!("invalid hwnd specified in egui init");
         }
 
         Self {
-            ui_fn: Box::new(ui_fn),
-            ui_state,
+            app,
             hwnd,
             reactive,
             tex_man: TextureManager::new(),
@@ -73,7 +69,10 @@ impl<T> EguiDx9<T> {
         self.should_reset = true;
     }
 
-    pub fn present(&mut self, dev: &IDirect3DDevice9) {
+    pub fn present(&mut self, dev: &IDirect3DDevice9)
+    where
+        T: App,
+    {
         if unsafe { dev.TestCooperativeLevel() }.is_err() {
             return;
         }
@@ -85,7 +84,7 @@ impl<T> EguiDx9<T> {
 
         let output = self.ctx.run(self.input_man.collect_input(), |ctx| {
             // safe. present will never run in parallel.
-            (self.ui_fn)(ctx, &mut self.ui_state)
+            self.app.update(ctx);
         });
 
         if self.should_reset {

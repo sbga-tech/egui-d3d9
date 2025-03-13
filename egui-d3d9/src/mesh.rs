@@ -165,7 +165,7 @@ impl Buffers {
                 vtx.Lock(
                     0,
                     vertices.len() as u32 * std::mem::size_of::<GpuVertex>() as u32,
-                    std::mem::transmute(&mut buffer),
+                    &mut buffer as *mut _ as _,
                     D3DLOCK_DISCARD as _
                 ),
                 "unable to lock vertex buffer"

@@ -5,7 +5,7 @@ use windows::Win32::{
     Foundation::{POINT, RECT},
     Graphics::Direct3D9::{
         IDirect3DDevice9, IDirect3DTexture9, D3DFMT_A8R8G8B8, D3DLOCKED_RECT, D3DLOCK_DISCARD,
-        D3DLOCK_READONLY, D3DPOOL_DEFAULT, D3DPOOL_SYSTEMMEM, D3DUSAGE_DYNAMIC,
+        D3DPOOL_DEFAULT, D3DPOOL_SYSTEMMEM, D3DUSAGE_DYNAMIC,
     },
 };
 
@@ -40,7 +40,7 @@ impl TextureManager {
     pub fn process_set_deltas(&mut self, dev: &IDirect3DDevice9, delta: &TexturesDelta) {
         delta.set.iter().for_each(|(tid, delta)| {
             // check if this texture already exists
-            if self.textures.get(tid).is_some() {
+            if self.textures.contains_key(tid) {
                 if delta.is_whole() {
                     // update the entire texture
                     self.update_texture_whole(dev, tid, &delta.image);
@@ -284,8 +284,8 @@ fn create_temporary_texture(
             temp_texture.LockRect(
                 0,
                 &mut locked_rect,
-                std::ptr::null_mut(),
-                D3DLOCK_DISCARD as u32 | D3DLOCK_READONLY as u32
+                std::ptr::null(),
+                D3DLOCK_DISCARD as u32
             ),
             "unable to lock temporary texture"
         );

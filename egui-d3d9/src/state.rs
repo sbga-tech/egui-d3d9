@@ -52,7 +52,7 @@ impl DxState {
 
             expect!(
                 // https://github.com/apitrace/dxsdk/blob/d964b66467aaa734edbc24326da8119f5f063dd3/Include/d3d9types.h#L333C35-L333C56
-                dev.GetTransform(D3DTRANSFORMSTATETYPE(0 + 256), &mut original_world),
+                dev.GetTransform(D3DTRANSFORMSTATETYPE(256), &mut original_world),
                 "unable to backup world matrix"
             );
             expect!(
@@ -90,7 +90,7 @@ impl Drop for DxState {
         unsafe {
             expect!(
                 self.dev
-                    .SetTransform(D3DTRANSFORMSTATETYPE(0 + 256), &self.original_world),
+                    .SetTransform(D3DTRANSFORMSTATETYPE(256), &self.original_world),
                 "unable to reset world matrix"
             );
             expect!(
@@ -209,7 +209,7 @@ fn setup_state(
             M44: 1.0,
         };
 
-        dev.SetTransform(D3DTRANSFORMSTATETYPE(0 + 256), &mat_ident)?;
+        dev.SetTransform(D3DTRANSFORMSTATETYPE(256), &mat_ident)?;
         dev.SetTransform(D3DTS_VIEW, &mat_ident)?;
         dev.SetTransform(D3DTS_PROJECTION, &mat_proj)?;
 
