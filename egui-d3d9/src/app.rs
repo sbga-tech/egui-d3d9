@@ -17,8 +17,8 @@ pub trait App {
     fn update(&mut self, ctx: &Context);
 }
 
-pub struct EguiDx9<T> {
-    app: T,
+pub struct EguiDx9 {
+    app: Box<dyn App>,
     hwnd: HWND,
     reactive: bool,
     input_man: InputManager,
@@ -32,7 +32,7 @@ pub struct EguiDx9<T> {
     should_reset: bool,
 }
 
-impl<T> EguiDx9<T> {
+impl EguiDx9 {
     ///
     /// initialize the backend.
     ///
@@ -42,7 +42,7 @@ impl<T> EguiDx9<T> {
     ///
     /// the menu doesn't always catch these changes, so only use this if you need to.
     ///
-    pub fn init(dev: &IDirect3DDevice9, hwnd: HWND, app: T, reactive: bool) -> Self {
+    pub fn init(dev: &IDirect3DDevice9, hwnd: HWND, reactive: bool, app: Box<dyn App>) -> Self {
         if hwnd.is_invalid() {
             panic!("invalid hwnd specified in egui init");
         }
@@ -69,10 +69,7 @@ impl<T> EguiDx9<T> {
         self.should_reset = true;
     }
 
-    pub fn present(&mut self, dev: &IDirect3DDevice9)
-    where
-        T: App,
-    {
+    pub fn present(&mut self, dev: &IDirect3DDevice9) {
         if unsafe { dev.TestCooperativeLevel() }.is_err() {
             return;
         }
@@ -83,7 +80,6 @@ impl<T> EguiDx9<T> {
         }
 
         let output = self.ctx.run(self.input_man.collect_input(), |ctx| {
-            // safe. present will never run in parallel.
             self.app.update(ctx);
         });
 
@@ -214,7 +210,7 @@ impl<T> EguiDx9<T> {
     }
 }
 
-impl<T> EguiDx9<T> {
+impl EguiDx9 {
     fn get_screen_size(&self) -> (f32, f32) {
         let mut rect = RECT::default();
         unsafe {
@@ -242,7 +238,7 @@ impl<T> EguiDx9<T> {
     }
 }
 
-impl<T> Drop for EguiDx9<T> {
+impl Drop for EguiDx9 {
     fn drop(&mut self) {
         self.buffers.delete_buffers();
         self.tex_man.deallocate_textures();

@@ -41,7 +41,7 @@ extern "stdcall" fn DllMain(hinst: usize, reason: u32, _reserved: *mut ()) -> i3
     1
 }
 
-static mut APP: Option<EguiDx9<Example>> = None;
+static mut APP: Option<EguiDx9> = None;
 static mut OLD_WND_PROC: Option<WNDPROC> = None;
 
 static_detour! {
@@ -77,7 +77,7 @@ fn hk_present(
             let window = FindWindowA(s!("Valve001"), PCSTR(std::ptr::null()))
                 .expect("unable to find valve window");
 
-            APP = Some(EguiDx9::init(&dev, window, Example(0), true));
+            APP = Some(EguiDx9::init(&dev, window, true, Box::new(Example(0))));
 
             OLD_WND_PROC = Some(transmute(SetWindowLongPtrA(
                 window,
