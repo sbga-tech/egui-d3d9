@@ -7,7 +7,7 @@ use egui::{
     ImageSource, Key, Modifiers, Pos2, Rect, RichText, ScrollArea, Slider, Stroke, StrokeKind,
     TextureId, Vec2, Widget,
 };
-use egui_d3d9::{App, EguiDx9};
+use egui_d3d9::EguiDx9;
 use std::{
     intrinsics::transmute,
     sync::{Arc, Once},
@@ -77,7 +77,15 @@ fn hk_present(
             let window = FindWindowA(s!("Valve001"), PCSTR(std::ptr::null()))
                 .expect("unable to find valve window");
 
-            APP = Some(EguiDx9::init(&dev, window, true, Box::new(Example(0))));
+            APP = Some(EguiDx9::init(
+                &dev,
+                window,
+                true,
+                Box::new({
+                    let mut example = Example(0);
+                    move |ctx| example.update(ctx)
+                }),
+            ));
 
             OLD_WND_PROC = Some(transmute(SetWindowLongPtrA(
                 window,
@@ -116,7 +124,7 @@ unsafe extern "stdcall" fn hk_wnd_proc(
 
 struct Example(i32);
 
-impl App for Example {
+impl Example {
     // most of this code is ported over from sy1ntexx's d3d11 implementation.
     fn update(&mut self, ctx: &Context) {
         unsafe {

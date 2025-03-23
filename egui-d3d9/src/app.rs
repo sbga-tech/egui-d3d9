@@ -13,12 +13,10 @@ use crate::{
     texman::TextureManager,
 };
 
-pub trait App {
-    fn update(&mut self, ctx: &Context);
-}
+pub type App = Box<dyn FnMut(&Context)>;
 
 pub struct EguiDx9 {
-    app: Box<dyn App>,
+    app: App,
     hwnd: HWND,
     reactive: bool,
     input_man: InputManager,
@@ -42,7 +40,7 @@ impl EguiDx9 {
     ///
     /// the menu doesn't always catch these changes, so only use this if you need to.
     ///
-    pub fn init(dev: &IDirect3DDevice9, hwnd: HWND, reactive: bool, app: Box<dyn App>) -> Self {
+    pub fn init(dev: &IDirect3DDevice9, hwnd: HWND, reactive: bool, app: App) -> Self {
         if hwnd.is_invalid() {
             panic!("invalid hwnd specified in egui init");
         }
@@ -80,7 +78,7 @@ impl EguiDx9 {
         }
 
         let output = self.ctx.run(self.input_man.collect_input(), |ctx| {
-            self.app.update(ctx);
+            (self.app)(ctx);
         });
 
         if self.should_reset {
