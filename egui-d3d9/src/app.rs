@@ -1,4 +1,4 @@
-use clipboard::{windows_clipboard::WindowsClipboardContext, ClipboardProvider};
+use clipboard_win::set_clipboard_string;
 use egui::{epaint::Primitive, Context};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, RECT, WPARAM},
@@ -193,7 +193,7 @@ impl EguiDx9 {
         for cmd in output.platform_output.commands {
             match cmd {
                 egui::OutputCommand::CopyText(text) => {
-                    let _ = WindowsClipboardContext.set_contents(text);
+                    let _ = set_clipboard_string(&text);
                 }
                 egui::OutputCommand::CopyImage(_) => {}
                 egui::OutputCommand::OpenUrl(_) => {}

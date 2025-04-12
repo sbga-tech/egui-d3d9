@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-use clipboard::{windows_clipboard::WindowsClipboardContext, ClipboardProvider};
+use clipboard_win::get_clipboard_string;
 use egui::{
     Event, Key, Modifiers, MouseWheelUnit, PointerButton, Pos2, RawInput, Rect, Theme, Vec2,
 };
@@ -45,6 +44,7 @@ pub enum InputResult {
     Key,
 }
 
+#[allow(dead_code)]
 impl InputResult {
     #[inline]
     pub fn is_valid(&self) -> bool {
@@ -232,7 +232,7 @@ impl InputManager {
 
                 if let Some(key) = get_key(wparam) {
                     if key == Key::V && modifiers.ctrl {
-                        if let Some(clipboard) = get_clipboard_text() {
+                        if let Ok(clipboard) = get_clipboard_string() {
                             self.events.push(Event::Text(clipboard));
                         }
                     }
@@ -406,8 +406,4 @@ fn get_system_theme() -> Option<Theme> {
     } else {
         Theme::Dark
     })
-}
-
-fn get_clipboard_text() -> Option<String> {
-    WindowsClipboardContext.get_contents().ok()
 }
